@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anthology</title>
+  <link rel="stylesheet" href="/theme.css">
+  <script src="/theme.js" defer></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 80px 24px 100px;
+    }
+
+    /* ── BACK LINK ── */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      margin-bottom: 40px;
+      transition: color 0.15s;
+    }
+
+    .back-link:hover {
+      color: var(--text);
+    }
+
+    /* ── HEADING ── */
+    h1.site-title {
+      font-family: "Segoe UI", "Segoe UI Variable Display", sans-serif;
+      font-size: clamp(2.2rem, 8vw, 4rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      color: var(--text);
+      animation: fadeSlideDown 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    /* ── ANTHOLOGY META BADGE ── */
+    .anthology-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      animation: fadeSlideDown 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .anthology-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(9, 105, 218, 0.08);
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid rgba(9, 105, 218, 0.2);
+    }
+
+    .anthology-byline {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ── INTRO ── */
+    .intro {
+      animation: fadeSlideUp 0.8s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+      margin-bottom: 0;
+    }
+
+    .intro p {
+      font-size: 0.97rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .intro p+p {
+      margin-top: 8px;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 36px 0;
+    }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── STORY LIST ── */
+    .story-section {
+      animation: fadeSlideUp 0.8s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .part-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 28px 0 12px;
+      opacity: 0.8;
+    }
+
+    .part-label:first-child {
+      margin-top: 0;
+    }
+
+    .story-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-story {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 16px;
+      font-family: "Segoe UI", sans-serif;
+      font-size: 0.93rem;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: not-allowed;
+      opacity: 0.65;
+      text-align: left;
+    }
+
+    .btn-story-ready {
+      background: #1a7f37;
+      color: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      opacity: 1;
+      text-decoration: none;
+
+    }
+
+    .btn-story-ready .story-num {
+      color: #ffffff;
+      opacity: 0.7;
+    }
+
+    .btn-story-ready:hover {
+      background: #1c8c3d;
+    }
+
+    .story-num {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      opacity: 0.6;
+      width: 18px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+
+    .story-name {
+      flex: 1;
+    }
+
+    .story-wip {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      opacity: 0.5;
+      flex-shrink: 0;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeSlideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="theme-toggle-wrap">
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5" />
+        <path
+          d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+      </svg>
+      <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+    </button>
+  </div>
+  <div class="container">
+
+    <!-- BACK LINK -->
+    <a href="/" class="back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+      respirable
+    </a>
+
+    <!-- HEADING -->
+
+    <h1 class="site-title">anthology</h1>
+
+    <!-- INTRO -->
+    <div class="intro">
+      <p>a collection of short stories about my life (in Vietnamese), told through Geometry Dash characters. i wrote
+        these stories intending to challenge the concept of a story, and to also give people an idea of how lonely i am
+        (and how naive i am).</p>
+      <p>when the stories are finished (greyed-out stories are not finished), i hope you guys will find it one of the
+        most interesting/unique thing you have ever read. i'm still a noob at writing, so... deal with the questionable
+        word choice.</p>
+      <p>(pro tip: read the stories in order. some stories introduce new things that may be crucial in the next ones.
+        don't be like me and skip a few stories)</p>
+      <p>(also another tip: if you felt like translating these stories to other languages, then great! come back later
+        when the stories are released)</p>
+
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- STORY LIST -->
+    <div class="story-section">
+      <div class="section-label">Stories</div>
+
+      <!-- PART 1 -->
+      <div class="part-label">Part 1</div>
+      <div class="story-grid">
+
+        <a href="/anthology/0" class="btn-story btn-story-ready">
+          <span class="story-num">0</span>
+          <span class="story-name">Giới thiệu</span>
+        </a>
+
+        <a href="/anthology/1" class="btn-story btn-story-ready">
+          <span class="story-num">1</span>
+          <span class="story-name">Làm giàu sớm</span>
+        </a>
+
+        <a href="/anthology/2" class="btn-story btn-story-ready">
+          <span class="story-num">2</span>
+          <span class="story-name">Đổi tên</span>
+        </a>
+
+        <a href="/anthology/3" class="btn-story btn-story-ready">
+          <span class="story-num">3</span>
+          <span class="story-name">Tuổi thơ tôi đấy</span>
+        </a>
+
+        <a href="/anthology/4" class="btn-story btn-story-ready">
+          <span class="story-num">4</span>
+          <span class="story-name">Vua trốn trại</span>
+        </a>
+
+        <a href="/anthology/5" class="btn-story btn-story-ready">
+          <span class="story-num">5</span>
+          <span class="story-name">Tôi có thể giúp gì không?</span>
+        </a>
+
+        <a href="/anthology/6" class="btn-story btn-story-ready">
+          <span class="story-num">6</span>
+          <span class="story-name">Buổi đêm</span>
+        </a>
+
+        <a href="/anthology/7" class="btn-story btn-story-ready">
+          <span class="story-num">7</span>
+          <span class="story-name">Người thứ ba</span>
+        </a>
+
+        <a href="/anthology/8" class="btn-story btn-story-ready">
+          <span class="story-num">8</span>
+          <span class="story-name">Một hình ảnh đáng giá một nghìn từ</span>
+        </a>
+
+        <a href="/anthology/9" class="btn-story btn-story-ready">
+          <span class="story-num">9</span>
+          <span class="story-name">Hút cạn kĩ năng</span>
+        </a>
+
+        <a href="/anthology/10" class="btn-story btn-story-ready">
+          <span class="story-num">10</span>
+          <span class="story-name">Điểm khởi đầu</span>
+        </a>
+
+        <a href="/anthology/11" class="btn-story btn-story-ready">
+          <span class="story-num">11</span>
+          <span class="story-name">Một ngày trọng đại... với Primera</span>
+        </a>
+
+        <a href="/anthology/12" class="btn-story btn-story-ready">
+          <span class="story-num">12</span>
+          <span class="story-name">Soi mói</span>
+        </a>
+
+        <a href="/anthology/13" class="btn-story btn-story-ready">
+          <span class="story-num">13</span>
+          <span class="story-name">Luyện viết, hay luyện phá luật?</span>
+        </a>
+
+        <a href="/anthology/14" class="btn-story btn-story-ready">
+          <span class="story-num">14</span>
+          <span class="story-name">Nhà có khách</span>
+        </a>
+
+        <a href="/anthology/15" class="btn-story btn-story-ready">
+          <span class="story-num">15</span>
+          <span class="story-name">Nhà có khách (Phần 2)</span>
+        </a>
+
+        <a href="/anthology/16" class="btn-story btn-story-ready">
+          <span class="story-num">16</span>
+          <span class="story-name">Một đổi một</span>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- PART 2 -->
+    <div class="story-section" style="margin-top: 8px;">
+      <div class="part-label">Part 2</div>
+      <div class="story-grid">
+
+        <a href="/anthology/18" class="btn-story btn-story-ready">
+          <span class="story-num">1</span>
+          <span class="story-name">Primera đi tìm sự thẳng thắn</span>
+        </a>
+
+        <a href="/anthology/19" class="btn-story btn-story-ready">
+          <span class="story-num">2</span>
+          <span class="story-name">Phản câu chuyện</span>
+        </a>
+
+        <a href="/anthology/20" class="btn-story btn-story-ready">
+          <span class="story-num">3</span>
+          <span class="story-name">Luyện viết, hay luyện phá luật II</span>
+        </a>
+
+        <a href="/anthology/21" class="btn-story btn-story-ready">
+          <span class="story-num">4</span>
+          <span class="story-name">Primera luyện xem Tarot</span>
+        </a>
+
+        <a href="/anthology/22" class="btn-story btn-story-ready">
+          <span class="story-num">5</span>
+          <span class="story-name">Giải nghĩa</span>
+        </a>
+
+        <a href="/anthology/23" class="btn-story btn-story-ready">
+          <span class="story-num">6</span>
+          <span class="story-name">Làm giàu sớm, nhưng bằng một cách khác</span>
+        </a>
+
+        <div class="btn-story">
+          <span class="story-num">7</span>
+          <span class="story-name">Sự thật</span>
+          <span class="story-wip">Soon</span>
+        </div>
+
+        <div class="btn-story">
+          <span class="story-num">8</span>
+          <span class="story-name">Lời tự sự ngắn của Primera</span>
+          <span class="story-wip">Soon</span>
+        </div>
+
+        <a href="/anthology/26" class="btn-story btn-story-ready">
+          <span class="story-num">9</span>
+          <span class="story-name">Cỗ máy thời gian</span>
+        </a>
+
+        <a href="/anthology/27" class="btn-story btn-story-ready">
+          <span class="story-num">10</span>
+          <span class="story-name">Cỗ máy thời gian (tiếp)</span>
+        </a>
+
+        <a href="/anthology/28" class="btn-story btn-story-ready">
+          <span class="story-num">11</span>
+          <span class="story-name">Ngày cuối cùng</span>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- UTILITIES -->
+    <div class="story-section" style="margin-top: 8px; display: none;">
+      <div class="part-label" style="color: var(--muted); opacity: 0.6;">Utilities</div>
+      <div class="story-grid">
+      </div>
+    </div>
+
+  </div>
+</body>
+
+</html>

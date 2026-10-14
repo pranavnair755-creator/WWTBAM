@@ -1,0 +1,3909 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WWTBAM HTML5 Controller Online</title>
+  <meta name="description"
+    content="Run a Who Wants to Be a Millionaire HTML5 controller directly in your browser. No IIS required." />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta property="og:title" content="WWTBAM HTML5 Controller Online" />
+  <meta property="og:description"
+    content="Run a WWTBAM HTML5 controller on the web without Internet Information Service." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/wwtbam-bg.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="stylesheet" href="/theme.css">
+  <script src="/theme.js" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <!-- Eagerly kick off Fira Code loading so it is ready when Monaco initializes -->
+  <script>
+    window._firaCodeReady = new Promise(function (resolve) {
+      var link = document.querySelector('link[href*="Fira+Code"]');
+      function tryLoad() {
+        Promise.all([
+          document.fonts.load('400 14px "Fira Code"'),
+          document.fonts.load('600 14px "Fira Code"')
+        ]).then(resolve).catch(resolve);
+      }
+      if (link) {
+        link.addEventListener('load', tryLoad);
+        link.addEventListener('error', resolve);
+      } else {
+        resolve();
+      }
+      // Fallback: try after a short delay regardless
+      setTimeout(tryLoad, 2000);
+    });
+  </script>
+  <link rel="stylesheet" data-name="vs/editor/editor.main"
+    href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/editor/editor.main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.43.0/min/vs/loader.min.js"></script>
+  <style>
+    /* ── WWTBAM CONTROLLER EDITOR V2 ── */
+    :root {
+      --edit-bg: #0e0f11;
+      --edit-panel: #141517;
+      --edit-hover: #1a1c20;
+      --edit-raised: #1e2026;
+      --edit-selected: #1b2535;
+      --edit-accent: #4a8fd6;
+      --edit-accent-bg: #1d2a3d;
+      --edit-accent-border: #263347;
+      --edit-strong-border: #2a2c31;
+      --edit-border: #23252a;
+      --edit-inner-border: #1e2026;
+
+      --edit-text-primary: #e2e4e9;
+      --edit-text-secondary: #b0b6c0;
+      --edit-text-muted: #9aa0ab;
+      --edit-text-dimmed: #7c8490;
+      --edit-text-faint: #555a63;
+      --edit-text-ghost: #484d57;
+      --edit-text-lnum: #2e3138;
+
+      --edit-danger: #c46060;
+      --edit-danger-bg: #2d1a1a;
+      --edit-danger-border: #3d2020;
+      --edit-warning: #c87070;
+      --edit-warning-bg: #1f1212;
+
+      --badge-xml: #a06ad6;
+      --badge-xml-bg: #22182a;
+      --badge-js: #c49a1a;
+      --badge-js-bg: #2a2518;
+      --badge-html: #5aab5a;
+      --badge-html-bg: #1d2a1a;
+      --badge-png: #4a8fd6;
+      --badge-png-bg: #1a2535;
+      --badge-other: #555a63;
+      --badge-other-bg: #1e2026;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #000000;
+      color: #ffffff;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    body,
+    input,
+    button,
+    select,
+    textarea {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    /* Base App Screens */
+    .controller-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    .loading-screen {
+      position: fixed;
+      inset: 0;
+      background: #0e0f11;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      color: #ffffff;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .loading-screen.hidden {
+      display: none !important;
+    }
+
+    .loading-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--edit-text-primary);
+    }
+
+    .loading-status {
+      font-size: 13px;
+      color: var(--edit-text-muted);
+      margin-top: 4px;
+    }
+
+    .loading-subtitle {
+      font-size: 12px;
+      color: var(--edit-text-ghost);
+      margin-top: 16px;
+      max-width: 400px;
+    }
+
+    .spinner {
+      width: 42px;
+      height: 42px;
+      border: 3px solid var(--edit-strong-border);
+      border-top-color: var(--edit-accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 18px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .progress-bar-container {
+      width: 260px;
+      height: 6px;
+      background: var(--edit-strong-border);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 12px 0 6px 0;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--edit-accent);
+      transition: width 0.25s ease;
+    }
+
+    .error-screen {
+      position: fixed;
+      inset: 0;
+      background: #0e0f11;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      color: #ffffff;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .error-screen.active {
+      display: flex;
+    }
+
+    .error-screen h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .error-screen p {
+      color: var(--edit-text-muted);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .retry-btn {
+      background: var(--edit-accent);
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: 0.2s;
+    }
+
+    .retry-btn:hover {
+      background: #3b7cc2;
+    }
+
+    .mobile-gate {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0e0f11;
+      z-index: 99999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      text-align: center;
+      color: #fff;
+    }
+
+    .mobile-gate-icon {
+      width: 56px;
+      height: 56px;
+      stroke: var(--edit-accent);
+      margin-bottom: 20px;
+    }
+
+    .mobile-gate h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .mobile-gate p {
+      color: var(--edit-text-secondary);
+      font-size: 14px;
+      max-width: 380px;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .mobile-gate-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 24px;
+      padding: 10px 20px;
+      background: var(--edit-raised);
+      border: 1px solid var(--edit-border);
+      color: #fff;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-gate {
+        display: flex;
+      }
+    }
+
+    .welcome-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9000;
+      padding: 24px;
+    }
+
+    .welcome-overlay.active {
+      display: flex;
+    }
+
+    .welcome-modal {
+      background: var(--edit-panel);
+      border: 1px solid var(--edit-strong-border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.85);
+      animation: modalPop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.2);
+    }
+
+    .welcome-modal h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .welcome-modal p {
+      color: var(--edit-text-secondary);
+      font-size: 14px;
+      line-height: 1.65;
+      margin-bottom: 26px;
+    }
+
+    .welcome-ok-btn {
+      width: 100%;
+      height: 42px;
+      background: var(--edit-accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .welcome-ok-btn:hover {
+      background: #3b7cc2;
+    }
+
+    .back-link-bar {
+      position: relative;
+      height: 38px;
+      background: var(--edit-panel);
+      border-bottom: 1px solid var(--edit-border);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      padding: 0 16px;
+      font-size: 12px;
+      flex-shrink: 0;
+      width: 100%;
+    }
+
+    body.topbar-hidden .back-link-bar {
+      display: none !important;
+    }
+
+    .back-link-bar a {
+      color: var(--edit-accent);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    .page-title {
+      color: var(--edit-text-secondary);
+      font-weight: 500;
+    }
+
+    .top-bar-tip {
+      margin-left: auto;
+      color: var(--edit-text-ghost);
+      font-size: 11px;
+    }
+
+    .edit-menu-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(16px) saturate(180%);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2vh 2vw;
+    }
+
+    .edit-menu-overlay.active {
+      display: flex;
+    }
+
+    .edit-menu-shell {
+      width: 1160px;
+      max-width: 95vw;
+      height: 680px;
+      max-height: 92vh;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 0.5px solid var(--edit-strong-border);
+      background: var(--edit-bg);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7);
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      font-size: 13px;
+      display: grid;
+      grid-template-columns: 54px 1fr;
+      grid-template-rows: 44px 1fr;
+    }
+
+    /* 2. Top Bar */
+    .edit-top-bar {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      background: var(--edit-panel);
+      border-bottom: 0.5px solid var(--edit-border);
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+    }
+
+    .edit-top-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--edit-text-secondary);
+    }
+
+    .edit-close-btn {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 4px 11px;
+      border-radius: 5px;
+      background: var(--edit-danger-bg);
+      color: var(--edit-danger);
+      border: 0.5px solid var(--edit-danger-border);
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    .edit-close-btn:hover {
+      background: #3a1f1f;
+    }
+
+    /* 3. Icon Rail */
+    .edit-icon-rail {
+      grid-column: 1;
+      grid-row: 2;
+      background: var(--edit-panel);
+      border-right: 0.5px solid var(--edit-border);
+      padding: 10px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .rail-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--edit-text-ghost);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .rail-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .rail-btn:hover {
+      background: var(--edit-raised);
+      color: var(--edit-text-muted);
+    }
+
+    .rail-btn.active {
+      background: var(--edit-accent-bg);
+      color: var(--edit-accent);
+    }
+
+    .rail-separator {
+      height: 0.5px;
+      width: 22px;
+      background: var(--edit-border);
+      margin: 6px 0;
+    }
+
+    .rail-spacer {
+      margin-top: auto;
+    }
+
+    /* Panels Area */
+    .edit-panel-container {
+      grid-column: 2;
+      grid-row: 2;
+      background: var(--edit-bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .edit-panel {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .edit-panel.active {
+      display: flex;
+    }
+
+    /* 4. Files Panel */
+    .panel-header {
+      padding: 10px 14px;
+      background: var(--edit-panel);
+      border-bottom: 0.5px solid var(--edit-border);
+      display: flex;
+      align-items: center;
+    }
+
+    .panel-header-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--edit-text-primary);
+    }
+
+    .panel-header-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .vtb {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 0.5px solid var(--edit-strong-border);
+      background: transparent;
+      color: var(--edit-text-dimmed);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .vtb:hover {
+      background: var(--edit-hover);
+      color: var(--edit-text-secondary);
+    }
+
+    .vtb.active {
+      background: var(--edit-accent-bg);
+      color: var(--edit-accent);
+      border-color: var(--edit-accent-border);
+    }
+
+    .vtb svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .v-sep {
+      width: 0.5px;
+      height: 16px;
+      background: var(--edit-strong-border);
+      margin: 0 3px;
+    }
+
+    .ib {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      border: none;
+      background: transparent;
+      color: var(--edit-text-dimmed);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .ib:hover {
+      background: var(--edit-raised);
+      color: var(--edit-text-secondary);
+    }
+
+    .ib:disabled {
+      opacity: 0.32;
+      cursor: not-allowed;
+      background: transparent;
+      color: var(--edit-text-ghost);
+    }
+
+    .ib.danger:hover:not(:disabled) {
+      background: var(--edit-danger-bg);
+      color: var(--edit-danger);
+    }
+
+    .ib svg {
+      width: 15px;
+      height: 15px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Files: List View */
+    .files-list-view {
+      padding: 6px 0 40px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .file-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 30px;
+      padding: 4px 12px;
+      border-left: 2px solid transparent;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .file-row:hover {
+      background: var(--edit-hover);
+    }
+
+    .file-row.selected {
+      background: var(--edit-selected);
+      border-left-color: var(--edit-accent);
+    }
+
+    .file-row.selected .file-name {
+      color: var(--edit-text-primary);
+    }
+
+    .chevron-icon {
+      width: 11px;
+      height: 11px;
+      stroke-width: 2.2;
+      color: var(--edit-text-ghost);
+      transition: transform 0.15s;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .chevron-spacer {
+      width: 11px;
+      height: 11px;
+    }
+
+    .file-row.open .chevron-icon {
+      transform: rotate(90deg);
+    }
+
+    .node-icon {
+      width: 14px;
+      height: 14px;
+      color: var(--edit-text-dimmed);
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .file-row.open>.node-icon {
+      color: var(--edit-accent);
+    }
+
+    .file-name {
+      font-size: 12px;
+      color: var(--edit-text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    .file-badge {
+      font-family: JetBrains Mono, monospace;
+      font-size: 9px;
+      font-weight: 500;
+      padding: 1px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-left: auto;
+    }
+
+    .badge-xml {
+      background: var(--badge-xml-bg);
+      color: var(--badge-xml);
+    }
+
+    .badge-js {
+      background: var(--badge-js-bg);
+      color: var(--badge-js);
+    }
+
+    .badge-html {
+      background: var(--badge-html-bg);
+      color: var(--badge-html);
+    }
+
+    .badge-png {
+      background: var(--badge-png-bg);
+      color: var(--badge-png);
+    }
+
+    .badge-other {
+      background: var(--badge-other-bg);
+      color: var(--badge-other);
+    }
+
+    /* Row Actions */
+    .row-acts {
+      display: none;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .file-row:hover .row-acts {
+      display: flex;
+    }
+
+    .ra {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: var(--edit-text-faint);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ra:hover {
+      background: var(--edit-strong-border);
+      color: var(--edit-text-muted);
+    }
+
+    .ra.danger:hover {
+      background: var(--edit-danger-bg);
+      color: var(--edit-danger);
+    }
+
+    .ra svg {
+      width: 12px;
+      height: 12px;
+      stroke-width: 1.8;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Inline Input */
+    .new-item-row,
+    .new-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-left: 2px solid var(--edit-accent);
+      background: var(--edit-selected);
+      min-height: 32px;
+      border-radius: 4px;
+      margin: 2px 0;
+      box-sizing: border-box;
+    }
+
+    .inline-input {
+      font: 12px 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      background: var(--edit-panel);
+      border: 1px solid var(--edit-accent);
+      color: var(--edit-text-primary);
+      border-radius: 4px;
+      padding: 3px 8px;
+      height: 24px;
+      outline: none;
+      flex: 1;
+      min-width: 80px;
+    }
+
+    .new-row-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    .new-row-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      color: var(--edit-text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.15s;
+    }
+
+    .new-row-btn:hover {
+      background: var(--edit-hover);
+      color: var(--edit-text-primary);
+    }
+
+    .new-row-btn.confirm:hover {
+      background: rgba(46, 160, 67, 0.25);
+      color: #3fb950;
+    }
+
+    .new-row-btn.cancel:hover {
+      background: rgba(248, 81, 73, 0.25);
+      color: #f85149;
+    }
+
+    .fchild {
+      padding-left: 14px;
+    }
+
+    /* Files: Grid View */
+    .files-grid-view {
+      display: none;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
+      padding: 14px;
+      align-content: start;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .files-grid-view.active {
+      display: grid;
+    }
+
+    .fcard {
+      background: var(--edit-panel);
+      border: 0.5px solid var(--edit-border);
+      border-radius: 8px;
+      padding: 10px 8px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .fcard:hover {
+      border-color: #3a3d45;
+      background: #191b1f;
+    }
+
+    .fcard.selected {
+      border-color: var(--edit-accent);
+      background: var(--edit-selected);
+    }
+
+    .fcard-thumb {
+      aspect-ratio: 16/10;
+      border-radius: 4px;
+      background: var(--edit-raised);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .fcard-thumb.img-bg {
+      background: linear-gradient(135deg, #1a2535 40%, #162030);
+      font-family: JetBrains Mono, monospace;
+      font-size: 9px;
+      color: #3a5070;
+      text-align: center;
+      padding: 4px;
+      word-break: break-all;
+    }
+
+    .fcard-thumb svg {
+      width: 22px;
+      height: 22px;
+      stroke: #3a3d45;
+      fill: none;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .fcard-name {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--edit-text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .fcard-path {
+      font-size: 9px;
+      color: var(--edit-text-ghost);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: -4px;
+    }
+
+    .fcard-bot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .fcard-size {
+      font-size: 9px;
+      color: var(--edit-text-ghost);
+    }
+
+    /* 5. Editor Panel */
+    .editor-open-file {
+      font-family: JetBrains Mono, monospace;
+      font-size: 11px;
+      color: var(--edit-text-ghost);
+      margin-left: 6px;
+    }
+
+    .editor-toolbar {
+      padding: 5px 10px;
+      background: var(--edit-panel);
+      border-bottom: 0.5px solid var(--edit-border);
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .editor-body {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      background: var(--edit-bg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #editorContainer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .editor-body .monaco-editor,
+    .editor-body .monaco-editor .overflow-guard {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    #editorImagePreview {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      background: var(--edit-bg);
+      box-sizing: border-box;
+      overflow: auto;
+    }
+
+    #editorEmptyState {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: var(--edit-bg);
+      color: var(--edit-text-muted);
+    }
+
+    /* 6. Info / Sandbox Guide Panel */
+    .info-content {
+      padding: 28px 36px;
+      width: 100%;
+      max-width: 1060px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .info-hero {
+      margin-bottom: 24px;
+    }
+
+    .info-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0 0 6px 0;
+      letter-spacing: -0.01em;
+    }
+
+    .info-subtitle {
+      font-size: 13px;
+      color: var(--edit-text-muted);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .info-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .info-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .info-card {
+      background: var(--edit-panel);
+      border: 0.5px solid var(--edit-border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .info-card h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-card p {
+      font-size: 12px;
+      color: var(--edit-text-dimmed);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .key-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--edit-raised);
+      border: 1px solid var(--edit-strong-border);
+      color: var(--edit-text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .info-warn {
+      border-left: 3px solid #e06c75;
+      background: #221518;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 18px 0;
+      border-top: 0.5px solid #3d2025;
+      border-right: 0.5px solid #3d2025;
+      border-bottom: 0.5px solid #3d2025;
+    }
+
+    .info-warn p {
+      font-size: 12px;
+      color: #e59999;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .info-disc {
+      background: var(--edit-panel);
+      border: 0.5px solid var(--edit-border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-top: 20px;
+    }
+
+    .info-disc p {
+      font-size: 11px;
+      color: var(--edit-text-ghost);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* 7. Settings Panel */
+    .settings-content {
+      padding: 28px 36px;
+      width: 100%;
+      max-width: 1060px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+
+    .sg-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--edit-text-ghost);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0 0 12px 0;
+    }
+
+    .sg {
+      background: var(--edit-panel);
+      border: 0.5px solid var(--edit-border);
+      border-radius: 10px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .sg-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 0.5px solid var(--edit-inner-border);
+    }
+
+    .sg-row:last-child {
+      border-bottom: none;
+    }
+
+    /* ── iOS-Style Toggle Switch ── */
+    .ios-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .ios-switch input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+      margin: 0;
+      pointer-events: none;
+    }
+
+    .ios-switch-track {
+      width: 44px;
+      height: 24px;
+      background-color: var(--edit-strong-border, #2d3139);
+      border-radius: 24px;
+      position: relative;
+      transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+      box-sizing: border-box;
+      display: block;
+    }
+
+    .ios-switch:hover .ios-switch-track {
+      background-color: #383d47;
+    }
+
+    .ios-switch-thumb {
+      width: 20px;
+      height: 20px;
+      background-color: #ffffff;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.2s ease;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35), 0 0 1px rgba(0, 0, 0, 0.2);
+    }
+
+    .ios-switch input:checked+.ios-switch-track {
+      background-color: #34c759;
+    }
+
+    .ios-switch input:checked+.ios-switch-track .ios-switch-thumb {
+      transform: translateX(20px);
+    }
+
+    .ios-switch:active .ios-switch-thumb {
+      width: 24px;
+    }
+
+    .ios-switch input:checked:active+.ios-switch-track .ios-switch-thumb {
+      transform: translateX(16px);
+    }
+
+    .ios-switch input:focus-visible+.ios-switch-track {
+      box-shadow: 0 0 0 2px var(--edit-bg), 0 0 0 4px var(--edit-accent);
+    }
+
+    .sg-row-left h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--edit-text-primary);
+      margin: 0 0 4px 0;
+    }
+
+    .sg-row-left p {
+      font-size: 12px;
+      color: var(--edit-text-muted);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .sg-diag-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      padding: 16px 20px;
+    }
+
+    .sg-diag-item {
+      background: var(--edit-bg);
+      border: 1px solid var(--edit-border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .sg-diag-title {
+      font-size: 11px;
+      color: var(--edit-text-ghost);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+
+    .sg-diag-val {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--edit-text-primary);
+    }
+
+    .sg-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+      padding: 16px 20px;
+    }
+
+    .sg-action-card {
+      background: var(--edit-bg);
+      border: 1px solid var(--edit-border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .sg-action-card h5 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--edit-text-primary);
+      margin: 0 0 4px 0;
+    }
+
+    .sg-action-card p {
+      font-size: 12px;
+      color: var(--edit-text-dimmed);
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .sg-action-btn {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--edit-strong-border);
+      background: var(--edit-panel);
+      color: var(--edit-text-secondary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      width: fit-content;
+    }
+
+    .sg-action-btn:hover {
+      background: var(--edit-raised);
+      color: var(--edit-text-primary);
+      border-color: var(--edit-accent);
+    }
+
+    .sg-action-btn.danger {
+      border-color: var(--edit-danger-border);
+      color: var(--edit-danger);
+      background: var(--edit-danger-bg);
+    }
+
+    .sg-action-btn.danger:hover {
+      background: #3d1a1a;
+      border-color: #e06c75;
+    }
+
+    /* Reset Confirmation Modal */
+    .reset-confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 205000;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    .reset-confirm-overlay.active {
+      display: flex;
+    }
+
+    .reset-confirm-modal {
+      background: #141517;
+      border: 1px solid var(--edit-danger-border);
+      border-radius: 16px;
+      padding: 28px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
+      text-align: left;
+    }
+
+    .reset-confirm-modal h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--edit-danger);
+      margin: 0 0 10px 0;
+    }
+
+    .reset-confirm-modal p {
+      color: var(--edit-text-secondary);
+      font-size: 13px;
+      margin: 0 0 16px 0;
+      line-height: 1.5;
+    }
+
+    .reset-confirm-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--edit-strong-border);
+      background: var(--edit-bg);
+      color: var(--edit-text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      margin-bottom: 20px;
+      outline: none;
+    }
+
+    .reset-confirm-input:focus {
+      border-color: var(--edit-danger);
+    }
+
+    .reset-confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .reset-confirm-actions button {
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: inherit;
+    }
+
+    .reset-cancel-btn {
+      background: var(--edit-raised);
+      color: var(--edit-text-primary);
+      border: 1px solid var(--edit-border) !important;
+    }
+
+    .reset-cancel-btn:hover {
+      background: var(--edit-hover);
+    }
+
+    .reset-execute-btn {
+      background: var(--edit-danger-bg);
+      color: var(--edit-danger);
+      border: 1px solid var(--edit-danger-border) !important;
+    }
+
+    .reset-execute-btn:hover:not(:disabled) {
+      background: #3d1c1c;
+    }
+
+    .reset-execute-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .sg-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 14px 16px;
+    }
+
+    .sg-btn {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      font-size: 12px;
+      padding: 6px 13px;
+      border-radius: 6px;
+      border: 0.5px solid var(--edit-strong-border);
+      background: transparent;
+      color: var(--edit-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .sg-btn svg {
+      width: 13px;
+      height: 13px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .sg-btn:hover {
+      background: var(--edit-hover);
+      color: var(--edit-text-primary);
+    }
+
+    .sg-btn.danger {
+      border-color: var(--edit-danger-border);
+      color: var(--edit-danger);
+    }
+
+    .sg-btn.danger:hover {
+      background: var(--edit-danger-bg);
+    }
+
+    /* ── INFO BUTTON (selection topbar) ── */
+    .info-btn {
+      margin-left: auto;
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--edit-text-dimmed);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .info-btn:hover {
+      background: var(--edit-raised);
+      color: var(--edit-text-primary);
+    }
+
+    .info-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ── GUIDE & PREFERENCES MODAL ── */
+    .guide-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9500;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(16px) saturate(180%);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2vh 2vw;
+    }
+
+    .guide-overlay.active {
+      display: flex;
+    }
+
+    .guide-shell {
+      width: 1160px;
+      max-width: 95vw;
+      height: 680px;
+      max-height: 92vh;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 0.5px solid var(--edit-strong-border);
+      background: var(--edit-bg);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.7);
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .guide-top-bar {
+      height: 44px;
+      flex-shrink: 0;
+      background: var(--edit-panel);
+      border-bottom: 0.5px solid var(--edit-border);
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+    }
+
+    .guide-top-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--edit-text-secondary);
+    }
+
+    .guide-close-btn {
+      margin-left: auto;
+      font-size: 11px;
+      padding: 4px 11px;
+      border-radius: 5px;
+      background: var(--edit-danger-bg);
+      color: var(--edit-danger);
+      border: 0.5px solid var(--edit-danger-border);
+      cursor: pointer;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      transition: background 0.2s;
+    }
+
+    .guide-close-btn:hover {
+      background: #3a1f1f;
+    }
+
+    .guide-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      background: var(--edit-bg);
+    }
+
+    .guide-body .info-content,
+    .guide-body .settings-content {
+      overflow: visible;
+    }
+
+    /* ── SWITCH VARIANT PANEL ── */
+    .vs-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .vs-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 16px;
+      background: var(--edit-panel);
+      border-bottom: 0.5px solid var(--edit-border);
+    }
+
+    .vs-head-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--edit-text-primary);
+    }
+
+    .vs-head-sub {
+      margin: 2px 0 0;
+      font-size: 11.5px;
+      color: var(--edit-text-muted);
+    }
+
+    .vs-search {
+      position: relative;
+      width: 230px;
+    }
+
+    .vs-search svg {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: var(--edit-text-ghost);
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+
+    .vs-search input {
+      width: 100%;
+      height: 30px;
+      padding: 0 28px 0 29px;
+      border: 0.5px solid var(--edit-strong-border);
+      border-radius: 6px;
+      background: var(--edit-bg);
+      color: var(--edit-text-primary);
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .vs-search input::placeholder {
+      color: var(--edit-text-ghost);
+    }
+
+    .vs-search input:focus {
+      border-color: var(--edit-accent);
+    }
+
+    .vs-kbd {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--edit-text-ghost);
+      border: 0.5px solid var(--edit-border);
+      border-radius: 3px;
+      padding: 2px 4px;
+      pointer-events: none;
+      transition: opacity 0.15s;
+    }
+
+    .vs-search input:focus~.vs-kbd {
+      opacity: 0;
+    }
+
+    .vs-body {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .vs-nav {
+      overflow-y: auto;
+      border-right: 0.5px solid var(--edit-border);
+      padding: 4px 0 20px;
+    }
+
+    .vs-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--edit-text-ghost);
+    }
+
+    .vs-group-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0;
+    }
+
+    .vs-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 8px 16px;
+      border: none;
+      border-left: 2px solid transparent;
+      background: transparent;
+      color: var(--edit-text-muted);
+      font-family: inherit;
+      font-size: 12.5px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .vs-item:hover {
+      background: var(--edit-hover);
+      color: var(--edit-text-primary);
+    }
+
+    .vs-item.sel {
+      background: var(--edit-selected);
+      color: var(--edit-text-primary);
+      border-left-color: var(--edit-accent);
+    }
+
+    .vs-radio {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      border: 1.5px solid var(--edit-strong-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s;
+    }
+
+    .vs-radio i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--edit-accent);
+      opacity: 0;
+      transform: scale(0);
+      transition: opacity 0.12s, transform 0.12s;
+    }
+
+    .vs-item.sel .vs-radio,
+    .vs-fmt.sel .vs-radio {
+      border-color: var(--edit-accent);
+    }
+
+    .vs-item.sel .vs-radio i,
+    .vs-fmt.sel .vs-radio i {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .vs-item-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .vs-chip {
+      flex-shrink: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--edit-accent);
+      background: var(--edit-accent-bg);
+      border: 0.5px solid var(--edit-accent-border);
+      border-radius: 3px;
+      padding: 2px 5px;
+    }
+
+    .vs-detail {
+      overflow-y: auto;
+      padding: 24px 28px 28px;
+    }
+
+    .vs-pane {
+      max-width: 560px;
+    }
+
+    .vs-eyebrow {
+      margin: 0 0 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--edit-text-ghost);
+    }
+
+    .vs-name {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--edit-text-primary);
+    }
+
+    .vs-desc {
+      margin: 10px 0 0;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--edit-text-dimmed);
+      max-width: 52ch;
+    }
+
+    .vs-label {
+      margin: 26px 0 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--edit-text-ghost);
+    }
+
+    .vs-formats {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .vs-fmt {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 14px;
+      border: 0.5px solid var(--edit-border);
+      border-radius: 8px;
+      background: var(--edit-panel);
+      color: var(--edit-text-secondary);
+      font-family: inherit;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.18s, background 0.18s, color 0.18s;
+    }
+
+    .vs-fmt:hover {
+      border-color: var(--edit-strong-border);
+    }
+
+    .vs-fmt.sel {
+      border-color: var(--edit-accent);
+      background: var(--edit-accent-bg);
+      color: var(--edit-text-primary);
+    }
+
+    .vs-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 60px 20px;
+      text-align: center;
+    }
+
+    .vs-empty svg {
+      width: 24px;
+      height: 24px;
+      fill: none;
+      stroke: var(--edit-text-ghost);
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .vs-empty p {
+      margin: 0;
+      font-size: 12.5px;
+      color: var(--edit-text-muted);
+    }
+
+    .vs-empty code {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--edit-text-primary);
+    }
+
+    .vs-foot {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 18px;
+      padding: 11px 16px;
+      background: var(--edit-panel);
+      border-top: 0.5px solid var(--edit-border);
+    }
+
+    .vs-warn {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin: 0;
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--edit-text-muted);
+      max-width: 62ch;
+    }
+
+    .vs-warn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      fill: none;
+      stroke: var(--edit-danger);
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .vs-warn strong {
+      color: var(--edit-text-primary);
+      font-weight: 600;
+    }
+
+    .vs-go {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 34px;
+      padding: 0 16px;
+      border: none;
+      border-radius: 7px;
+      background: var(--edit-accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .vs-go:hover:not(:disabled) {
+      background: #3b7cc2;
+    }
+
+    .vs-go:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .vs-go svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Switch Variant confirmation modal */
+    .vs-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 205000;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      backdrop-filter: blur(10px);
+    }
+
+    .vs-overlay.active {
+      display: flex;
+    }
+
+    .vs-modal {
+      background: var(--edit-panel);
+      border: 1px solid var(--edit-danger-border);
+      border-radius: 16px;
+      padding: 26px;
+      max-width: 460px;
+      width: 100%;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8);
+      animation: modalPop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.2);
+    }
+
+    .vs-modal h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--edit-text-primary);
+    }
+
+    .vs-modal>p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--edit-text-secondary);
+    }
+
+    .vs-losses {
+      margin: 16px 0 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: var(--edit-danger-bg);
+      border: 1px solid var(--edit-danger-border);
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .vs-losses li {
+      display: flex;
+      gap: 9px;
+      align-items: flex-start;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--edit-text-secondary);
+    }
+
+    .vs-losses svg {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+      margin-top: 3px;
+      fill: none;
+      stroke: var(--edit-danger);
+      stroke-width: 2;
+      stroke-linecap: round;
+    }
+
+    .vs-skip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--edit-text-muted);
+      cursor: pointer;
+    }
+
+    .vs-skip input {
+      accent-color: var(--edit-danger);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .vs-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .vs-modal-actions button {
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .vs-cancel-btn {
+      background: var(--edit-raised);
+      color: var(--edit-text-primary);
+      border-color: var(--edit-border) !important;
+    }
+
+    .vs-cancel-btn:hover {
+      background: var(--edit-hover);
+    }
+
+    .vs-confirm-btn {
+      background: var(--edit-danger-bg);
+      color: var(--edit-danger);
+      border-color: var(--edit-danger-border) !important;
+    }
+
+    .vs-confirm-btn:hover {
+      background: #3d1c1c;
+    }
+
+    @media (max-width: 820px) {
+      .vs-body {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+
+      .vs-nav {
+        border-right: 0;
+        border-bottom: 0.5px solid var(--edit-border);
+        max-height: 38%;
+      }
+
+      .vs-head {
+        grid-template-columns: 1fr;
+      }
+
+      .vs-search {
+        width: 100%;
+      }
+
+      .vs-foot {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .vs-detail {
+        padding: 20px;
+      }
+    }
+
+    /* Conflict Modal */
+    .conflict-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 200000;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      backdrop-filter: blur(8px);
+    }
+
+    .conflict-overlay.active {
+      display: flex;
+    }
+
+    .conflict-modal {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 450px;
+      width: 100%;
+      box-shadow: 0 32px 64px rgba(0, 0, 0, 0.7);
+      animation: modalPop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.2);
+    }
+
+    @keyframes modalPop {
+      from {
+        transform: scale(0.9);
+        opacity: 0;
+      }
+    }
+
+    .conflict-modal h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .conflict-modal p {
+      color: #848d97;
+      font-size: 14px;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .conflict-modal label {
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .conflict-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+
+    .conflict-actions button {
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+
+    #conflictSkipBtn {
+      background: transparent;
+      border: 1px solid #30363d;
+      color: #fff;
+    }
+
+    #conflictSkipBtn:hover {
+      background: #30363d;
+    }
+
+    #conflictReplaceBtn {
+      background: #238636;
+      border: 1px solid #2ea043;
+      color: #fff;
+    }
+
+    #conflictReplaceBtn:hover {
+      background: #2ea043;
+    }
+
+    /* ── RESTRICTION MODAL ── */
+    .restriction-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 7000;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(16px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .restriction-overlay.active {
+      display: flex;
+    }
+
+    .restriction-card {
+      background: linear-gradient(180deg, #1d1718 0%, var(--edit-panel) 100%);
+      border: 1px solid var(--edit-danger-border);
+      max-width: 440px;
+      width: 100%;
+      padding: 32px 30px 28px 30px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(196, 96, 96, 0.2);
+      animation: restrictionPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .restriction-icon-badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(196, 96, 96, 0.12);
+      border: 1px solid rgba(196, 96, 96, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    @keyframes restrictionPop {
+      from {
+        transform: scale(0.92);
+        opacity: 0;
+      }
+
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .restriction-card h3 {
+      color: #ffffff;
+      margin: 0 0 10px 0;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    .restriction-card p {
+      color: var(--edit-text-secondary);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    .restriction-ok-btn {
+      width: 100%;
+      height: 42px;
+      background: var(--edit-danger-bg);
+      color: #ff9e9e;
+      border: 1px solid var(--edit-danger-border);
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .restriction-ok-btn:hover {
+      background: #3d2020;
+      color: #ffffff;
+      border-color: rgba(255, 158, 158, 0.4);
+      transform: translateY(-1px);
+    }
+
+    /* ── SCROLLBARS ── */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0e0f11;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #2a2c31;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3a3d45;
+    }
+
+    /* ── FILES GRID VIEW ── */
+    .files-grid-view {
+      display: none;
+      grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+      gap: 10px;
+      padding: 14px;
+      align-content: start;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: #0e0f11;
+    }
+
+    .file-card {
+      background: var(--edit-panel);
+      border: 0.5px solid var(--edit-border);
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+      user-select: none;
+      box-sizing: border-box;
+    }
+
+    .file-card:hover {
+      background: var(--edit-hover);
+      border-color: var(--edit-strong-border);
+      transform: translateY(-1px);
+    }
+
+    .file-card.selected {
+      background: var(--edit-selected);
+      border-color: var(--edit-accent);
+      box-shadow: 0 0 0 1px var(--edit-accent);
+    }
+
+    .file-thumb {
+      aspect-ratio: 16/10;
+      border-radius: 5px;
+      background: var(--edit-raised);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      border: 0.5px solid var(--edit-inner-border);
+    }
+
+    .file-thumb svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--edit-text-dimmed);
+      fill: none;
+      stroke-width: 1.6;
+    }
+
+    .file-thumb-img {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #1a2535 40%, #162030);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--edit-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4px;
+      word-break: break-all;
+    }
+
+    .file-card-name {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--edit-text-primary);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+
+    .file-card-path {
+      font-size: 10px;
+      color: var(--edit-text-ghost);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+    }
+
+    /* ── SELECTION OVERLAY (NEW LIST + DETAIL INTERFACE) ── */
+    .selection-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: #0e0f11;
+      display: none;
+      overflow: hidden;
+    }
+
+    .selection-overlay.active {
+      display: flex;
+    }
+
+    .shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      background: #0e0f11;
+      color: #e2e4e9;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      height: 48px;
+      flex-shrink: 0;
+      background: #141517;
+      border-bottom: 0.5px solid #23252a;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+    }
+
+    .back-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: #7c8490;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .12s, color .12s;
+    }
+
+    .back-btn:hover {
+      background: #1e2026;
+      color: #b0b6c0;
+    }
+
+    .back-btn svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .topbar-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #b0b6c0;
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── LIST PANE ── */
+    .list-pane {
+      width: 320px;
+      flex-shrink: 0;
+      border-right: 0.5px solid #23252a;
+      background: #101113;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .search-wrap {
+      padding: 12px;
+      border-bottom: 0.5px solid #1e2026;
+      flex-shrink: 0;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #141517;
+      border: 0.5px solid #23252a;
+      border-radius: 8px;
+      padding: 7px 10px;
+      transition: border-color .15s;
+    }
+
+    .search-box:focus-within {
+      border-color: #3a3d45;
+    }
+
+    .search-box svg {
+      width: 14px;
+      height: 14px;
+      stroke: #484d57;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #e2e4e9;
+      font-family: inherit;
+      font-size: 12px;
+      width: 100%;
+    }
+
+    .search-box input::placeholder {
+      color: #484d57;
+    }
+
+    .list-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0 16px;
+    }
+
+    .list-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .list-scroll::-webkit-scrollbar-thumb {
+      background: #23252a;
+      border-radius: 2px;
+    }
+
+    .group-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .group-header .ch {
+      width: 10px;
+      height: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #484d57;
+      flex-shrink: 0;
+      transition: transform .15s;
+    }
+
+    .group-header.open .ch {
+      transform: rotate(90deg);
+    }
+
+    .group-header .ch svg {
+      width: 100%;
+      height: 100%;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .group-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: #484d57;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .group-count {
+      font-size: 10px;
+      color: #3a3d45;
+      margin-left: auto;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .group-body {
+      overflow: hidden;
+    }
+
+    .vrow {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 14px 7px 30px;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: background .1s;
+    }
+
+    .vrow:hover {
+      background: #161719;
+    }
+
+    .vrow.sel {
+      background: #161f2c;
+      border-left-color: #4a8fd6;
+    }
+
+    .vrow .radio {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 1.5px solid #3a3d45;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color .15s;
+    }
+
+    .vrow.sel .radio {
+      border-color: #4a8fd6;
+    }
+
+    .radio-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4a8fd6;
+      opacity: 0;
+      transform: scale(0);
+      transition: opacity .12s, transform .12s;
+    }
+
+    .vrow.sel .radio-dot {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .vrow-name {
+      font-size: 12px;
+      color: #9aa0ab;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .vrow.sel .vrow-name {
+      color: #e2e4e9;
+    }
+
+    .vrow-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      font-weight: 500;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #1e2026;
+      color: #7c8490;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .vrow.sel .vrow-tag {
+      background: #1d2a3d;
+      color: #4a8fd6;
+    }
+
+    .list-empty {
+      padding: 32px 20px;
+      text-align: center;
+      color: #484d57;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    /* ── DETAIL PANE ── */
+    .detail-pane {
+      flex: 1;
+      overflow-y: auto;
+      background: #0e0f11;
+    }
+
+    .detail-pane::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .detail-pane::-webkit-scrollbar-thumb {
+      background: #23252a;
+      border-radius: 2px;
+    }
+
+    .detail-empty {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #3a3d45;
+      padding: 40px;
+    }
+
+    .detail-empty svg {
+      width: 40px;
+      height: 40px;
+      stroke: #23252a;
+      fill: none;
+      stroke-width: 1.3;
+    }
+
+    .detail-empty p {
+      font-size: 13px;
+      color: #484d57;
+    }
+
+    .detail-content {
+      padding: 32px 40px;
+      max-width: 560px;
+    }
+
+    .detail-eyebrow {
+      font-size: 11px;
+      color: #484d57;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: .03em;
+    }
+
+    .detail-name {
+      font-size: 22px;
+      font-weight: 600;
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .detail-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #1d2a3d;
+      color: #4a8fd6;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .detail-desc {
+      font-size: 13px;
+      color: #7c8490;
+      line-height: 1.7;
+      margin-top: 12px;
+      max-width: 46ch;
+    }
+
+    .format-block {
+      margin-top: 28px;
+    }
+
+    .format-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #484d57;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .format-single {
+      font-size: 12px;
+      color: #5a6070;
+      font-style: italic;
+      background: #141517;
+      border: 0.5px solid #1e2026;
+      border-radius: 8px;
+      padding: 11px 14px;
+    }
+
+    .format-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .fopt {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: 8px;
+      background: #141517;
+      border: 0.5px solid #23252a;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+
+    .fopt:hover {
+      border-color: #3a3d45;
+    }
+
+    .fopt.sel {
+      border-color: #4a8fd6;
+      background: #161f2c;
+    }
+
+    .fopt .radio {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid #3a3d45;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fopt.sel .radio {
+      border-color: #4a8fd6;
+    }
+
+    .fopt .radio-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #4a8fd6;
+      opacity: 0;
+      transform: scale(0);
+      transition: opacity .12s, transform .12s;
+    }
+
+    .fopt.sel .radio-dot {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .fopt-label {
+      font-size: 13px;
+      color: #b0b6c0;
+      font-weight: 500;
+    }
+
+    .fopt.sel .fopt-label {
+      color: #e2e4e9;
+    }
+
+    .fopt-desc {
+      font-size: 11px;
+      color: #484d57;
+      margin-left: auto;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      height: 60px;
+      flex-shrink: 0;
+      border-top: 0.5px solid #1e2026;
+      background: #0c0d0f;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 0 24px;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 9px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: background .12s, color .12s, transform .08s;
+      border: none;
+    }
+
+    .btn:active {
+      transform: scale(.97);
+    }
+
+    .btn-primary {
+      background: #4a8fd6;
+      color: #0e1520;
+    }
+
+    .btn-primary:hover {
+      background: #5a9de0;
+    }
+
+    .btn-primary:disabled {
+      background: #1d2a3d;
+      color: #3a4a5e;
+      cursor: not-allowed;
+    }
+
+    .btn-primary:disabled:active {
+      transform: none;
+    }
+
+    .btn svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ══════════════════════════════════════════
+       LIGHT MODE — Menu (edit-menu-shell)
+       Applied via: body.menu-light-mode
+    ══════════════════════════════════════════ */
+    body.menu-light-mode {
+      --edit-bg: #f0f2f5;
+      --edit-panel: #ffffff;
+      --edit-hover: #e8eaf0;
+      --edit-raised: #e4e7ee;
+      --edit-selected: #dde8f7;
+      --edit-accent: #2563eb;
+      --edit-accent-bg: #dbeafe;
+      --edit-accent-border: #bfdbfe;
+      --edit-strong-border: #d0d5de;
+      --edit-border: #dde1e9;
+      --edit-inner-border: #e4e7ee;
+
+      --edit-text-primary: #0f1117;
+      --edit-text-secondary: #374151;
+      --edit-text-muted: #4b5563;
+      --edit-text-dimmed: #6b7280;
+      --edit-text-faint: #9ca3af;
+      --edit-text-ghost: #a0a9b8;
+      --edit-text-lnum: #d1d5db;
+
+      --edit-danger: #dc2626;
+      --edit-danger-bg: #fee2e2;
+      --edit-danger-border: #fca5a5;
+      --edit-warning: #ca8a04;
+      --edit-warning-bg: #fef9c3;
+
+      --badge-xml: #7c3aed;
+      --badge-xml-bg: #ede9fe;
+      --badge-js: #b45309;
+      --badge-js-bg: #fef3c7;
+      --badge-html: #16a34a;
+      --badge-html-bg: #dcfce7;
+      --badge-png: #2563eb;
+      --badge-png-bg: #dbeafe;
+      --badge-other: #6b7280;
+      --badge-other-bg: #f3f4f6;
+    }
+
+    /* Light-mode overrides that can't use vars (hardcoded colours in base rules) */
+    body.menu-light-mode .fcard:hover {
+      background: #eaecf2;
+      border-color: #c5cad4;
+    }
+
+    body.menu-light-mode .files-grid-view {
+      background: #f0f2f5;
+    }
+
+    body.menu-light-mode .loading-screen,
+    body.menu-light-mode .error-screen {
+      background: #f0f2f5;
+    }
+
+    body.menu-light-mode ::-webkit-scrollbar-track {
+      background: #f0f2f5;
+    }
+
+    body.menu-light-mode ::-webkit-scrollbar-thumb {
+      background: #c5cad4;
+    }
+
+    body.menu-light-mode ::-webkit-scrollbar-thumb:hover {
+      background: #9aa0ab;
+    }
+
+    body.menu-light-mode .conflict-modal {
+      background: #ffffff;
+      border-color: #d0d5de;
+    }
+
+    body.menu-light-mode .conflict-modal h3,
+    body.menu-light-mode .conflict-modal label {
+      color: #0f1117;
+    }
+
+    body.menu-light-mode .conflict-modal p {
+      color: #4b5563;
+    }
+
+    body.menu-light-mode #conflictSkipBtn {
+      color: #0f1117;
+      border-color: #d0d5de;
+    }
+
+    body.menu-light-mode #conflictSkipBtn:hover {
+      background: #e8eaf0;
+    }
+
+    body.menu-light-mode .reset-confirm-modal {
+      background: #ffffff;
+    }
+
+    body.menu-light-mode .info-warn {
+      background: #fff1f2;
+      border-color: #fca5a5;
+    }
+
+    body.menu-light-mode .info-warn p {
+      color: #dc2626;
+    }
+
+    /* Selection overlay (variant chooser) — adopts the same light palette */
+    body.menu-light-mode .selection-overlay {
+      background: #f0f2f5;
+    }
+
+    body.menu-light-mode .shell {
+      background: #f0f2f5;
+      color: #0f1117;
+    }
+
+    body.menu-light-mode .topbar {
+      background: #ffffff;
+      border-color: #dde1e9;
+    }
+
+    body.menu-light-mode .topbar-title {
+      color: #374151;
+    }
+
+    body.menu-light-mode .back-btn {
+      color: #6b7280;
+    }
+
+    body.menu-light-mode .back-btn:hover {
+      background: #e4e7ee;
+      color: #374151;
+    }
+
+    body.menu-light-mode .list-pane {
+      background: #f7f9fc;
+      border-color: #dde1e9;
+    }
+
+    body.menu-light-mode .search-wrap {
+      border-color: #e4e7ee;
+    }
+
+    body.menu-light-mode .search-box {
+      background: #ffffff;
+      border-color: #dde1e9;
+    }
+
+    body.menu-light-mode .search-box input {
+      color: #0f1117;
+    }
+
+    body.menu-light-mode .search-box svg {
+      stroke: #9ca3af;
+    }
+
+    body.menu-light-mode .search-box input::placeholder {
+      color: #9ca3af;
+    }
+
+    body.menu-light-mode .group-name {
+      color: #9ca3af;
+    }
+
+    body.menu-light-mode .group-header .ch {
+      color: #9ca3af;
+    }
+
+    body.menu-light-mode .group-count {
+      color: #c5cad4;
+    }
+
+    body.menu-light-mode .vrow:hover {
+      background: #eef0f5;
+    }
+
+    body.menu-light-mode .vrow.sel {
+      background: #dbeafe;
+      border-left-color: #2563eb;
+    }
+
+    body.menu-light-mode .vrow-name {
+      color: #4b5563;
+    }
+
+    body.menu-light-mode .vrow.sel .vrow-name {
+      color: #0f1117;
+    }
+
+    body.menu-light-mode .vrow .radio {
+      border-color: #c5cad4;
+    }
+
+    body.menu-light-mode .vrow.sel .radio {
+      border-color: #2563eb;
+    }
+
+    body.menu-light-mode .radio-dot {
+      background: #2563eb;
+    }
+
+    body.menu-light-mode .vrow-tag {
+      background: #e4e7ee;
+      color: #6b7280;
+    }
+
+    body.menu-light-mode .vrow.sel .vrow-tag {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+
+    body.menu-light-mode .detail-pane {
+      background: #f0f2f5;
+    }
+
+    body.menu-light-mode .detail-empty {
+      color: #c5cad4;
+    }
+
+    body.menu-light-mode .detail-empty p {
+      color: #9ca3af;
+    }
+
+    body.menu-light-mode .detail-eyebrow {
+      color: #9ca3af;
+    }
+
+    body.menu-light-mode .detail-desc {
+      color: #4b5563;
+    }
+
+    body.menu-light-mode .detail-tag {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+
+    body.menu-light-mode .format-single {
+      background: #ffffff;
+      border-color: #e4e7ee;
+      color: #6b7280;
+    }
+
+    body.menu-light-mode .fopt {
+      background: #ffffff;
+      border-color: #dde1e9;
+    }
+
+    body.menu-light-mode .fopt:hover {
+      border-color: #a0a9b8;
+    }
+
+    body.menu-light-mode .fopt.sel {
+      border-color: #2563eb;
+      background: #dbeafe;
+    }
+
+    body.menu-light-mode .fopt .radio {
+      border-color: #c5cad4;
+    }
+
+    body.menu-light-mode .fopt.sel .radio {
+      border-color: #2563eb;
+    }
+
+    body.menu-light-mode .fopt .radio-dot {
+      background: #2563eb;
+    }
+
+    body.menu-light-mode .fopt-label {
+      color: #374151;
+    }
+
+    body.menu-light-mode .fopt.sel .fopt-label {
+      color: #0f1117;
+    }
+
+    body.menu-light-mode .fopt-desc {
+      color: #9ca3af;
+    }
+
+    body.menu-light-mode .footer {
+      background: #f7f9fc;
+      border-color: #dde1e9;
+    }
+
+    body.menu-light-mode .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    body.menu-light-mode .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    body.menu-light-mode .btn-primary:disabled {
+      background: #bfdbfe;
+      color: #93c5fd;
+    }
+
+    body.menu-light-mode .list-scroll::-webkit-scrollbar-thumb {
+      background: #d0d5de;
+    }
+
+    body.menu-light-mode .detail-pane::-webkit-scrollbar-thumb {
+      background: #d0d5de;
+    }
+
+    /* ios-switch track idle colour in light mode */
+    body.menu-light-mode .ios-switch-track {
+      background-color: #c5cad4;
+    }
+
+    body.menu-light-mode .ios-switch:hover .ios-switch-track {
+      background-color: #a0a9b8;
+    }
+
+    /* Hardcoded #ffffff text overrides for Info Guide and modals in light mode */
+    body.menu-light-mode .info-title {
+      color: #0f1117;
+    }
+
+    body.menu-light-mode .info-card h4 {
+      color: #0f1117;
+    }
+
+    body.menu-light-mode .welcome-modal h2 {
+      color: #0f1117;
+    }
+
+    body.menu-light-mode .sg-row-left h4 {
+      color: #0f1117;
+    }
+
+    /* ══════════════════════════════════════════
+       LIGHT MODE — Monaco Editor
+       Applied programmatically via editor.setTheme()
+       No CSS class needed here; Monaco handles it.
+    ══════════════════════════════════════════ */
+  </style>
+</head>
+
+<body>
+
+  <div class="selection-overlay active" id="selectionOverlay">
+    <div class="shell">
+      <div class="topbar">
+        <a href="/" class="back-btn" title="Back to main page">
+          <svg viewBox="0 0 24 24">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </a>
+        <span class="topbar-title">Choose graphic variation</span>
+        <button class="info-btn" id="guideOpenBtn" onclick="openGuideModal()"
+          title="Guide &amp; preferences" aria-label="Guide and preferences">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <line x1="12" y1="16" x2="12" y2="11"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="content">
+        <div class="list-pane">
+          <div class="search-wrap">
+            <div class="search-box">
+              <svg viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="search-input" placeholder="Search variations">
+            </div>
+          </div>
+          <div class="list-scroll" id="list-scroll"></div>
+        </div>
+
+        <div class="detail-pane" id="detail-pane"></div>
+      </div>
+
+      <div class="footer">
+        <button class="btn btn-primary" id="start-btn" disabled onclick="startWithSelection()">
+          Start controller
+          <svg viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════ MOBILE GATE ═══════════════════ -->
+  <div class="mobile-gate" id="mobileGate">
+    <svg class="mobile-gate-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+      stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+      <line x1="12" y1="18" x2="12.01" y2="18" />
+    </svg>
+    <h1>Hold up!</h1>
+    <p>You need to visit this website on a desktop to access the WWTBAM HTML5 Controller</p>
+    <p>The controller is designed to work on a desktop computer only, not mobile devices.
+    </p>
+    <a href="/" class="mobile-gate-link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+
+      </svg>
+      Back to Main Page
+    </a>
+  </div>
+
+  <!-- ═══════════════════ LOADING SCREEN ═══════════════════ -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <div class="loading-title">Loading Controller...</div>
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="loading-status" id="loadingStatus">Preparing...</div>
+    <div class="loading-subtitle">This may take a while. While you wait, remember to check out other projects made by
+      respirable!</div>
+  </div>
+
+  <!-- ═══════════════════ ERROR SCREEN ═══════════════════ -->
+  <div class="error-screen" id="errorScreen">
+    <h2>Hmm... Something happened</h2>
+    <p id="errorMessage">Unable to load the controller bundle.</p>
+    <button class="retry-btn" onclick="location.reload()">Try Again</button>
+    <a href="/" class="mobile-gate-link"
+      style="background: var(--surface2); color: var(--text); border: 1px solid var(--border); margin-top: 4px;">Back to
+      respirable</a>
+  </div>
+
+  <!-- ═══════════════════ TOP BAR ═══════════════════ -->
+  <div class="back-link-bar" id="topBar" style="display: none; align-items: center; gap: 16px;">
+    <a href="/">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      respirable
+    </a>
+    <span class="page-title">WWTBAM HTML5 Controller Online</span>
+    <span class="top-bar-tip">Press Backspace to toggle this bar. Press Esc to open the Editor.</span>
+  </div>
+
+  <!-- ═══════════════════ CONTROLLER IFRAME ═══════════════════ -->
+  <iframe class="controller-frame" id="controllerFrame" style="display: none;"></iframe>
+
+  <!-- ═══════════════════ WELCOME MODAL ═══════════════════ -->
+  <div class="welcome-overlay" id="welcomeOverlay">
+    <div class="welcome-modal">
+      <h2>Welcome to the Online WWTBAM HTML5 Controller!</h2>
+      <p>This site allows you to use the controller without having to enable Internet Information Service on your
+        computer! Should you want to edit the controller's files and/or learn more about how this works,
+        press the Esc key.</p>
+      <button class="welcome-ok-btn" id="welcomeOkBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ EDIT MENU OVERLAY (PHASE 4 - GRID SPEC) ═══════════════════ -->
+  <div class="edit-menu-overlay" id="editMenuOverlay">
+    <div class="edit-menu-shell">
+
+      <!-- 2. Top Bar -->
+      <div class="edit-top-bar" id="editTopBar">
+        <span class="edit-top-title" id="editTopTitle">My Files</span>
+        <button class="edit-close-btn" onclick="toggleDevBar()">Close (Esc)</button>
+      </div>
+
+      <!-- 3. Icon Rail -->
+      <div class="edit-icon-rail">
+        <button id="railBtn-files" class="rail-btn active" onclick="switchTab('files')" title="Files">
+          <svg viewBox="0 0 24 24">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            <line x1="9" y1="14" x2="15" y2="14"></line>
+          </svg>
+        </button>
+        <button id="railBtn-editor" class="rail-btn" onclick="switchTab('editor')" title="Editor">
+          <svg viewBox="0 0 24 24">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+        </button>
+        <div class="rail-separator"></div>
+        <button id="railBtn-info" class="rail-btn" onclick="switchTab('info')" title="Sandbox Guide">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </button>
+        <div class="rail-spacer"></div>
+        <button id="railBtn-switch" class="rail-btn" onclick="switchTab('switch')" title="Switch variant">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 8h13l-3.2-3.2M20 16H7l3.2 3.2" />
+          </svg>
+        </button>
+        <div class="rail-separator"></div>
+        <button id="railBtn-settings" class="rail-btn" onclick="switchTab('settings')" title="Settings">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+            </path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- 4. Active Panel Container -->
+      <div class="edit-panel-container">
+
+        <!-- Files Panel -->
+        <div id="panel-files" class="edit-panel active">
+          <div class="panel-header">
+            <div class="panel-header-title">My Files</div>
+            <div class="panel-header-actions">
+              <button class="vtb active" id="btnListView" onclick="setFileView('list')" title="List View">
+                <svg viewBox="0 0 24 24">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </button>
+              <button class="vtb" id="btnGridView" onclick="setFileView('grid')" title="Grid View">
+                <svg viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+              </button>
+              <div class="v-sep"></div>
+              <button class="ib" id="btnRenameSel" onclick="event.stopPropagation(); renameSelection()" title="Rename"
+                disabled>
+                <svg viewBox="0 0 24 24">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <button class="ib danger" id="btnDeleteSel" onclick="event.stopPropagation(); deleteSelection()"
+                title="Delete" disabled>
+                <svg viewBox="0 0 24 24">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+                </svg>
+              </button>
+              <div class="v-sep"></div>
+              <button class="ib" onclick="event.stopPropagation(); inlineNewItem('file')" title="New File">
+                <svg viewBox="0 0 24 24">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+              </button>
+              <button class="ib" onclick="event.stopPropagation(); inlineNewItem('folder')" title="New Folder">
+                <svg viewBox="0 0 24 24">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  <line x1="12" y1="11" x2="12" y2="17"></line>
+                  <line x1="9" y1="14" x2="15" y2="14"></line>
+                </svg>
+              </button>
+              <button class="ib" onclick="triggerFileUpload()" title="Upload File(s)">
+                <svg viewBox="0 0 24 24">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </button>
+              <button class="ib" onclick="triggerFolderUpload()" title="Upload Folder">
+                <svg viewBox="0 0 24 24">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  <polyline points="12 11 12 17"></polyline>
+                  <polyline points="9 14 12 11 15 14"></polyline>
+                </svg>
+              </button>
+              <button class="ib" onclick="renderFileList()" title="Refresh">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <polyline points="3 3 3 8 8 8"></polyline>
+                </svg>
+              </button>
+            </div>
+            <input type="file" id="fileUploadInput" multiple style="display:none">
+            <input type="file" id="folderUploadInput" webkitdirectory directory multiple style="display:none">
+          </div>
+          <div class="files-list-view" id="fileList"></div>
+          <div class="files-grid-view" id="fileGrid"></div>
+        </div>
+
+        <!-- Editor Panel -->
+        <div id="panel-editor" class="edit-panel">
+          <div class="panel-header">
+            <div class="panel-header-title">Editor</div>
+            <div class="editor-open-file" id="editorOpenFile">No file selected</div>
+          </div>
+          <div class="editor-toolbar">
+            <button class="ib" onclick="editorAction('undo')" title="Undo">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 7v6h6"></path>
+                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+              </svg>
+            </button>
+            <button class="ib" onclick="editorAction('redo')" title="Redo">
+              <svg viewBox="0 0 24 24">
+                <path d="M21 7v6h-6"></path>
+                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path>
+              </svg>
+            </button>
+            <div class="v-sep"></div>
+            <button class="ib" onclick="openFind()" title="Find (Ctrl+F)">
+              <svg viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+            <button class="ib" onclick="openReplace()" title="Find & Replace (Ctrl+H)">
+              <svg viewBox="0 0 24 24">
+                <path d="M14 4h7v7"></path>
+                <path d="M21 4l-7 7"></path>
+                <path d="M3 10V6a2 2 0 0 1 2-2h4"></path>
+                <path d="M10 20H6a2 2 0 0 1-2-2v-4"></path>
+                <path d="M14 20h4a2 2 0 0 0 2-2v-4"></path>
+              </svg>
+            </button>
+            <div class="v-sep"></div>
+            <button class="ib" onclick="saveEditorContent()" title="Save">
+              <svg viewBox="0 0 24 24">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+            </button>
+          </div>
+          <div class="editor-body">
+            <div id="editorContainer"></div>
+            <div id="editorImagePreview"></div>
+            <div id="editorEmptyState">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                style="color: var(--edit-text-ghost);">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+              <p style="color: var(--edit-text-muted); font-size: 13px; margin: 0;">Select a file from My Files to start
+                editing</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sandbox Guide Panel -->
+        <div id="panel-info" class="edit-panel">
+          <!-- Filled from GUIDE_HTML in main.js so the guide has one source; the
+               Guide & preferences modal renders the same string. -->
+          <div class="info-content" id="infoPanelBody"></div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="panel-settings" class="edit-panel">
+          <div class="settings-content">
+            <div class="sg-label">General Preferences</div>
+            <!-- Rows come from SETTING_TOGGLES in main.js; the Guide & preferences
+                 modal renders the same three from that one list. -->
+            <div class="sg" id="settingsToggleRows"></div>
+
+
+            <div class="sg-label">Maintenance & Recovery</div>
+            <div class="sg">
+              <div class="sg-actions-grid">
+                <div class="sg-action-card">
+                  <div>
+                    <h5>Force Cache Refresh</h5>
+                    <p>Reloads the controller frame and flushes in-memory asset cache.</p>
+                  </div>
+                  <button class="sg-action-btn" onclick="hardRefresh()">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.27l-3.26 3.26"></path>
+                    </svg>
+                    Refresh Cache
+                  </button>
+                </div>
+
+                <div class="sg-action-card">
+                  <div>
+                    <h5>Restore Questions</h5>
+                    <p>Resets questions.xml and switchQuestions.xml to original defaults.</p>
+                  </div>
+                  <button class="sg-action-btn" onclick="restoreDefaultQuestions()">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                      <polyline points="3 3 3 8 8 8"></polyline>
+                    </svg>
+                    Restore Defaults
+                  </button>
+                </div>
+
+                <div class="sg-action-card">
+                  <div>
+                    <h5>Reset Entire Sandbox</h5>
+                    <p>Permanently deletes all custom uploaded files and resets to default package.</p>
+                  </div>
+                  <button class="sg-action-btn danger" onclick="resetSandbox()">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    Erase & Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Switch Variant Panel -->
+        <div id="panel-switch" class="edit-panel">
+          <div class="vs-panel">
+            <div class="vs-head">
+              <div>
+                <h3 class="vs-head-title">Switch variant</h3>
+                <p class="vs-head-sub">Loads a different controller bundle. The sandbox is cleared first.</p>
+              </div>
+              <div class="vs-search">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+                <input type="text" id="vsSearch" placeholder="Search variants" autocomplete="off" spellcheck="false">
+                <span class="vs-kbd">/</span>
+              </div>
+            </div>
+
+            <div class="vs-body">
+              <div class="vs-nav" id="vsNav"></div>
+              <div class="vs-detail">
+                <div class="vs-pane" id="vsPane"></div>
+              </div>
+            </div>
+
+            <div class="vs-foot">
+              <p class="vs-warn">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 9v4M12 17h.01" />
+                  <path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+                </svg>
+                <span><strong>Files you edited will be erased.</strong> The sandbox database is cleared before the new
+                  bundle loads. Export anything you want to keep first.</span>
+              </p>
+              <button class="vs-go" id="vsGo" disabled onclick="openVariantSwitchModal()">
+                <span id="vsGoLabel">Switch variant</span>
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 12h13M13 6l6 6-6 6" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ GUIDE & PREFERENCES MODAL ═══════════════════ -->
+  <div class="guide-overlay" id="guideOverlay">
+    <div class="guide-shell">
+      <div class="guide-top-bar">
+        <span class="guide-top-title">Guide &amp; preferences</span>
+        <button class="guide-close-btn" onclick="closeGuideModal()">Close (Esc)</button>
+      </div>
+      <div class="guide-body">
+        <div class="info-content" id="guideModalBody"></div>
+        <div class="settings-content" style="padding-top: 0;">
+          <div class="sg-label">General Preferences</div>
+          <div class="sg" id="guideToggleRows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ SWITCH VARIANT CONFIRMATION ═══════════════════ -->
+  <div class="vs-overlay" id="vsConfirmOverlay">
+    <div class="vs-modal">
+      <h3 id="vsConfirmTitle">Switch variant?</h3>
+      <p>This replaces the current sandbox contents.</p>
+      <ul class="vs-losses">
+        <li>
+          <svg viewBox="0 0 24 24">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+          <span>Every file in the sandbox is deleted, including your edits</span>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+          <span>Custom questions revert to the new bundle's defaults</span>
+        </li>
+      </ul>
+      <label class="vs-skip">
+        <input type="checkbox" id="vsSkipConfirmCheckbox">
+        In the future, do not show this type of popup again.
+      </label>
+
+      <div class="vs-modal-actions">
+        <button class="vs-cancel-btn" id="vsConfirmCancel" onclick="closeVariantSwitchModal()">Cancel</button>
+        <button class="vs-confirm-btn" id="vsConfirmGo" onclick="confirmVariantSwitch()">Erase and switch</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════ CONFLICT MODAL ═══════════════════ -->
+  <div class="conflict-overlay" id="conflictOverlay">
+    <div class="conflict-modal">
+      <h3>File Already Exists</h3>
+      <p id="conflictMsg">A file named "example.js" already exists. What would you like to do?</p>
+      <div class="setting-item">
+        <label>
+          <input type="checkbox" id="conflictRemember"> Don't ask again (Remember choice)
+        </label>
+      </div>
+      <div class="conflict-actions">
+        <button id="conflictSkipBtn">Skip</button>
+        <button class="primary-btn" id="conflictReplaceBtn">Replace</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ RESET CONFIRMATION MODAL ═══════════════════ -->
+  <div class="reset-confirm-overlay" id="resetConfirmOverlay">
+    <div class="reset-confirm-modal">
+      <h3>Reset Entire Sandbox?</h3>
+      <p>This action is <strong>irreversible</strong>. All custom graphics, uploaded sounds, modified question XMLs, and
+        scripts will be permanently deleted and restored to default.</p>
+      <p style="font-size: 12px; color: var(--edit-text-muted);">Please type <strong
+          style="color: var(--edit-danger);">RESET</strong> below to confirm:</p>
+      <input type="text" id="resetConfirmInput" class="reset-confirm-input" placeholder="Type RESET to confirm"
+        autocomplete="off" spellcheck="false">
+
+      <div style="margin-bottom: 18px;">
+        <label
+          style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--edit-text-muted); cursor: pointer;">
+          <input type="checkbox" id="skipResetConfirmCheckbox"
+            style="accent-color: var(--edit-danger); width: 15px; height: 15px; cursor: pointer;">
+          In the future, do not show this type-to-confirm-deletion popup again.
+        </label>
+      </div>
+
+      <div class="reset-confirm-actions">
+        <button class="reset-cancel-btn" id="resetCancelBtn" onclick="closeResetConfirmModal()">Cancel</button>
+        <button class="reset-execute-btn" id="resetExecuteBtn" disabled onclick="executeResetSandbox()">Erase &
+          Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ THEME TOGGLE ═══════════════════ -->
+  <div class="theme-toggle-wrap" id="themeToggleWrap" style="display: none;">
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+        <circle cx="12" cy="12" r="5" />
+        <line x1="12" y1="1" x2="12" y2="3" />
+        <line x1="12" y1="21" x2="12" y2="23" />
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+        <line x1="1" y1="12" x2="3" y2="12" />
+        <line x1="21" y1="12" x2="23" y2="12" />
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+      </svg>
+      <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+    </button>
+
+  </div>
+
+  <!-- ═══════════════════ TOAST CONTAINER ═══════════════════ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+  <script src="/controller/db.js?v=2.3"></script>
+  <script src="/controller/loader.js?v=2.3"></script>
+  <script src="/controller/main.js?v=2.3"></script>
+  <!-- ═══════════════════ RESTRICTION MODAL ═══════════════════ -->
+  <div class="restriction-overlay" id="restrictionOverlay">
+    <div class="restriction-card">
+      <div class="restriction-icon-badge">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#f87171" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+      <h3>One second!</h3>
+      <p id="restrictionMsg">Ummm... This is a WWTBAM HTML5 Sandbox, not your second Google Drive. I know you want to
+        upload some kind of EXE file that links to your controller, but I'm careful about security here. Sorry for
+        that.</p>
+      <button class="restriction-ok-btn"
+        onclick="document.getElementById('restrictionOverlay').classList.remove('active')">OK</button>
+    </div>
+  </div>
+</body>
+
+</html>
